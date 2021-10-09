@@ -1,14 +1,15 @@
 [package]
-name = "casper-erc1155"
+name = "erc1155"
 version = "0.1.0"
-edition = "2021"
-authors = [""]
+edition = "2018"
+authors = ["Lucas Jovanovich @en0c-026"]
 description = "A library for developing ERC1155 tokens for the Casper network."
 readme = "README.md"
 documentation = "https://docs.rs/casper-erc1155"
 homepage = "https://casperlabs.io"
 repository = "https://github.com/casper-ecosystem/erc1155"
 license-file = "../LICENSE"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 base64 = { version = "0.13.0", default-features = false, features = ["alloc"] }
