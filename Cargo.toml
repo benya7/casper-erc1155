@@ -1,0 +1,20 @@
+[workspace]
+members = [
+    "erc1155",
+    "testing/tests",
+    "testing/erc1155-test",
+    "testing/erc1155-test-call",
+    "example/erc1155-token",
+    "example/erc1155-tests"
+]
+default-members = [
+    "erc1155",
+    "testing/tests",
+    "testing/erc1155-test",
+    "testing/erc1155-test-call",
+    "example/erc1155-tests"
+]
+
+[profile.release]
+codegen-units = 1
+lto = true
