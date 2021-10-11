@@ -5,7 +5,7 @@ members = [
     "testing/erc1155-test",
     "testing/erc1155-test-call",
     "example/erc1155-token",
-    "example/erc1155-tests"
+    "example/erc1155-tests",
 ]
 default-members = [
     "erc1155",

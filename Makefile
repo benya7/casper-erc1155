@@ -1,28 +1,30 @@
+ALL_CONTRACTS = erc1155-token erc1155-test erc1155-test-call
+CONTRACT_TARGET_DIR = target/wasm32-unknown-unknown/release
+
 prepare:
 	rustup target add wasm32-unknown-unknown
 
-build-contract:
-	cd contract && cargo build --release --target wasm32-unknown-unknown
-	wasm-strip contract/target/wasm32-unknown-unknown/release/contract.wasm 2>/dev/null | true
+.PHONY:	build-contracts
+build-contracts:
+	cargo build --release --target wasm32-unknown-unknown $(patsubst %, -p %, $(ALL_CONTRACTS))
+	$(foreach WASM, $(ALL_CONTRACTS), wasm-strip $(CONTRACT_TARGET_DIR)/$(subst -,_,$(WASM)).wasm 2>/dev/null | true;)
+	cp target/wasm32-unknown-unknown/release/erc1155_token.wasm example/erc1155-tests/wasm
+	cp target/wasm32-unknown-unknown/release/erc1155_test.wasm testing/tests/wasm
+	cp target/wasm32-unknown-unknown/release/erc1155_test_call.wasm testing/tests/wasm
+	cp target/wasm32-unknown-unknown/release/erc1155_token.wasm testing/tests/wasm
 
-test: build-contract
-	mkdir -p tests/wasm
-	cp contract/target/wasm32-unknown-unknown/release/contract.wasm tests/wasm
-	cd tests && cargo test
+test:
+	cargo test
 
 clippy:
-	cd contract && cargo clippy --all-targets -- -D warnings
-	cd tests && cargo clippy --all-targets -- -D warnings
+	cargo clippy --all-targets -- -D warnings
+	cargo clippy --all-targets -p erc1155-token --target wasm32-unknown-unknown -- -D warnings
 
 check-lint: clippy
-	cd contract && cargo fmt -- --check
-	cd tests && cargo fmt -- --check
+	cargo fmt --all -- --check
 
 lint: clippy
-	cd contract && cargo fmt
-	cd tests && cargo fmt
+	cargo fmt --all
 
 clean:
-	cd contract && cargo clean
-	cd tests && cargo clean
-	rm -rf tests/wasm
+	cargo clean

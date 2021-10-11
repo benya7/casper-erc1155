@@ -4,57 +4,109 @@
 #[cfg(not(target_arch = "wasm32"))]
 compile_error!("target arch should be wasm32: compile with '--target wasm32-unknown-unknown'");
 
-// We need to explicitly import the std alloc crate and `alloc::string::String` as we're in a
-// `no_std` environment.
 extern crate alloc;
 
 use alloc::string::String;
-
-use casper_contract::{
-    contract_api::{runtime, storage},
-    unwrap_or_revert::UnwrapOrRevert,
+use alloc::vec::Vec;
+use casper_contract::{contract_api::runtime, unwrap_or_revert::UnwrapOrRevert};
+use casper_erc1155::{
+    constants::{
+        ACCOUNTS_RUNTIME_ARG_NAME, ACCOUNT_RUNTIME_ARG_NAME, AMOUNTS_RUNTIME_ARG_NAME,
+        AMOUNT_RUNTIME_ARG_NAME, APPROVED_RUNTIME_ARG_NAME, FROM_RUNTIME_ARG_NAME,
+        OPERATOR_RUNTIME_ARG_NAME, OWNER_RUNTIME_ARG_NAME, RECIPIENT_RUNTIME_ARG_NAME,
+        TOKEN_IDS_RUNTIME_ARG_NAME, TOKEN_ID_RUNTIME_ARG_NAME, URI_RUNTIME_ARG_NAME,
+    },
+    Address, ERC1155,
 };
-use casper_types::{ApiError, Key};
+use casper_types::{account::AccountHash, CLValue, U256};
 
-const KEY_NAME: &str = "my-key-name";
-const RUNTIME_ARG_NAME: &str = "message";
-
-/// An error enum which can be converted to a `u16` so it can be returned as an `ApiError::User`.
-#[repr(u16)]
-enum Error {
-    KeyAlreadyExists = 0,
-    KeyMismatch = 1,
-}
-
-impl From<Error> for ApiError {
-    fn from(error: Error) -> Self {
-        ApiError::User(error as u16)
-    }
+#[no_mangle]
+pub extern "C" fn uri() {
+    let uri = ERC1155::default().uri();
+    runtime::ret(CLValue::from_t(uri).unwrap_or_revert());
 }
 
 #[no_mangle]
-pub extern "C" fn call() {
-    // The key shouldn't already exist in the named keys.
-    let missing_key = runtime::get_key(KEY_NAME);
-    if missing_key.is_some() {
-        runtime::revert(Error::KeyAlreadyExists);
-    }
+pub extern "C" fn total_supply() {
+    let id: String = runtime::get_named_arg(TOKEN_ID_RUNTIME_ARG_NAME);
+    let total_supply = ERC1155::default().total_supply(&id);
+    runtime::ret(CLValue::from_t(total_supply).unwrap_or_revert());
+}
 
-    // This contract expects a single runtime argument to be provided.  The arg is named "message"
-    // and will be of type `String`.
-    let value: String = runtime::get_named_arg(RUNTIME_ARG_NAME);
+#[no_mangle]
+pub extern "C" fn balance_of() {
+    let account: Address = runtime::get_named_arg(ACCOUNT_RUNTIME_ARG_NAME);
+    let id: String = runtime::get_named_arg(TOKEN_ID_RUNTIME_ARG_NAME);
+    let balance = ERC1155::default().balance_of(account, &id);
+    runtime::ret(CLValue::from_t(balance).unwrap_or_revert());
+}
 
-    // Store this value under a new unforgeable reference a.k.a `URef`.
-    let value_ref = storage::new_uref(value);
+#[no_mangle]
+pub extern "C" fn balance_of_batch() {
+    let accounts: Vec<Address> = runtime::get_named_arg(ACCOUNTS_RUNTIME_ARG_NAME);
+    let ids: Vec<String> = runtime::get_named_arg(TOKEN_IDS_RUNTIME_ARG_NAME);
+    let balance = ERC1155::default().balance_of_batch(accounts, ids);
+    runtime::ret(CLValue::from_t(balance).unwrap_or_revert());
+}
 
-    // Store the new `URef` as a named key with a name of `KEY_NAME`.
-    let key = Key::URef(value_ref);
-    runtime::put_key(KEY_NAME, key);
+#[no_mangle]
+pub extern "C" fn set_approval_for_all() {
+    let operator: Address = runtime::get_named_arg(OPERATOR_RUNTIME_ARG_NAME);
+    let approved: bool = runtime::get_named_arg(APPROVED_RUNTIME_ARG_NAME);
+    ERC1155::default()
+        .set_approval_for_all(operator, approved)
+        .unwrap_or_revert();
+}
 
-    // The key should now be able to be retrieved.  Note that if `get_key()` returns `None`, then
-    // `unwrap_or_revert()` will exit the process, returning `ApiError::None`.
-    let retrieved_key = runtime::get_key(KEY_NAME).unwrap_or_revert();
-    if retrieved_key != key {
-        runtime::revert(Error::KeyMismatch);
-    }
+#[no_mangle]
+pub extern "C" fn is_approval_for_all() {
+    let account: Address = runtime::get_named_arg(ACCOUNT_RUNTIME_ARG_NAME);
+    let operator: Address = runtime::get_named_arg(OPERATOR_RUNTIME_ARG_NAME);
+    let approved = ERC1155::default().is_approval_for_all(account, operator);
+    runtime::ret(CLValue::from_t(approved).unwrap_or_revert());
+}
+
+#[no_mangle]
+pub extern "C" fn safe_transfer_from() {
+    let from: Address = runtime::get_named_arg(FROM_RUNTIME_ARG_NAME);
+    let to: Address = runtime::get_named_arg(RECIPIENT_RUNTIME_ARG_NAME);
+    let id: String = runtime::get_named_arg(TOKEN_ID_RUNTIME_ARG_NAME);
+    let amount: U256 = runtime::get_named_arg(AMOUNT_RUNTIME_ARG_NAME);
+    ERC1155::default()
+        .safe_transfer_from(from, to, &id, amount)
+        .unwrap_or_revert();
+}
+
+#[no_mangle]
+pub extern "C" fn safe_batch_transfer_from() {
+    let to: Address = runtime::get_named_arg(RECIPIENT_RUNTIME_ARG_NAME);
+    let ids: Vec<String> = runtime::get_named_arg(TOKEN_IDS_RUNTIME_ARG_NAME);
+    let amounts: Vec<U256> = runtime::get_named_arg(AMOUNTS_RUNTIME_ARG_NAME);
+    ERC1155::default()
+        .safe_batch_transfer_from(to, ids, amounts)
+        .unwrap_or_revert();
+}
+
+#[no_mangle]
+pub extern "C" fn mint() {
+    let to: Address = runtime::get_named_arg(RECIPIENT_RUNTIME_ARG_NAME);
+    let id: String = runtime::get_named_arg(TOKEN_ID_RUNTIME_ARG_NAME);
+    let amount: U256 = runtime::get_named_arg(AMOUNT_RUNTIME_ARG_NAME);
+    ERC1155::default().mint(to, &id, amount).unwrap_or_revert();
+}
+
+#[no_mangle]
+pub extern "C" fn burn() {
+    let owner: Address = runtime::get_named_arg(OWNER_RUNTIME_ARG_NAME);
+    let id: String = runtime::get_named_arg(TOKEN_ID_RUNTIME_ARG_NAME);
+    let amount: U256 = runtime::get_named_arg(AMOUNT_RUNTIME_ARG_NAME);
+    ERC1155::default()
+        .burn(owner, &id, amount)
+        .unwrap_or_revert();
+}
+
+#[no_mangle]
+fn call() {
+    let uri = runtime::get_named_arg(URI_RUNTIME_ARG_NAME);
+    let _token = ERC1155::install(uri).unwrap_or_revert();
 }

@@ -2,10 +2,10 @@
 use core::convert::TryInto;
 
 use casper_contract::{
-    contract_api::{runtime},
+    contract_api::{runtime, storage},
     unwrap_or_revert::UnwrapOrRevert,
 };
-use casper_types::{system::CallStackElement, ApiError, URef};
+use casper_types::{bytesrepr::FromBytes, system::CallStackElement, ApiError, CLTyped, URef};
 
 use crate::{error::Error, Address};
 
@@ -18,14 +18,14 @@ pub(crate) fn get_uref(name: &str) -> URef {
 }
 
 /// Reads value from a named key.
-// pub(crate) fn read_from<T>(name: &str) -> T
-// where
-//     T: FromBytes + CLTyped,
-// {
-//     let uref = get_uref(name);
-//     let value: T = storage::read(uref).unwrap_or_revert().unwrap_or_revert();
-//     value
-// }
+pub(crate) fn read_from<T>(name: &str) -> T
+where
+    T: FromBytes + CLTyped,
+{
+    let uref = get_uref(name);
+    let value: T = storage::read(uref).unwrap_or_revert().unwrap_or_revert();
+    value
+}
 
 /// Gets the immediate call stack element of the current execution.
 fn get_immediate_call_stack_item() -> Option<CallStackElement> {
