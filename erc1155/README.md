@@ -1,10 +1,10 @@
-# casper-erc20
+# casper-erc1155
 
-A library for developing ERC20 tokens for the Casper network.
+A library for developing ERC1155 tokens for the Casper network.
 
-To create an example ERC20 contract which uses this library, use the cargo-casper tool:
+To create an example ERC1155 contract which uses this library, use the cargo-casper tool:
 
 ```
 cargo install cargo-casper
-cargo casper --erc20 <PATH TO NEW PROJECT>
+cargo casper --erc1155 <PATH TO NEW PROJECT>
 ```
