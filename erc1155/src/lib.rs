@@ -36,8 +36,8 @@ use casper_types::{contracts::NamedKeys, EntryPoints, Key, URef, U256};
 
 pub use address::Address;
 use constants::{
-    BALANCES_KEY_NAME, ERC1155_TOKEN_CONTRACT_KEY_NAME, OPERATORS_KEY_NAME,
-    TOTAL_SUPPLY_KEY_NAME, URI_KEY_NAME,
+    BALANCES_KEY_NAME, ERC1155_TOKEN_CONTRACT_KEY_NAME, OPERATORS_KEY_NAME, TOTAL_SUPPLY_KEY_NAME,
+    URI_KEY_NAME,
 };
 pub use error::Error;
 
@@ -57,7 +57,7 @@ impl ERC1155 {
             total_supply_uref: total_supply_uref.into(),
         }
     }
-    
+
     fn balances_uref(&self) -> URef {
         *self.balances_uref.get_or_init(balances::get_balances_uref)
     }
@@ -65,7 +65,7 @@ impl ERC1155 {
     fn operators_uref(&self) -> URef {
         *self.operators_uref.get_or_init(operators::operators_uref)
     }
-    
+
     fn total_supply_uref(&self) -> URef {
         *self
             .total_supply_uref
@@ -109,9 +109,7 @@ impl ERC1155 {
     /// Installs the ERC1155 contract with the default set of entry points.
     ///
     /// This should be called from within `fn call()` of your contract.
-    pub fn install(
-      uri: String,
-    ) -> Result<ERC1155, Error> {
+    pub fn install(uri: String) -> Result<ERC1155, Error> {
         let default_entry_points = entry_points::default();
         ERC1155::install_custom(uri, ERC1155_TOKEN_CONTRACT_KEY_NAME, default_entry_points)
     }
@@ -157,19 +155,22 @@ impl ERC1155 {
         amount: U256,
     ) -> Result<(), Error> {
         let spender = detail::get_immediate_caller_address()?;
-        if amount.is_zero() {
+        let operator = self.read_operator(from, spender);
+        if (from != spender && !operator) || amount == U256::zero() {
             return Ok(());
+        } else {
+            let sender_balance = {
+                let balance = self.read_balance(from, &id);
+                balance.checked_sub(amount).ok_or(Error::Overflow)?
+            };
+            let recipient_balance = {
+                let balance = self.read_balance(to, &id);
+                balance.checked_add(amount).ok_or(Error::Overflow)?
+            };
+            self.write_balance(from, &id, sender_balance);
+            self.write_balance(to, &id, recipient_balance);
+            Ok(())
         }
-        if from != spender {
-          let operator_approved = self.read_operator(from, spender);
-          if operator_approved {
-            self.transfer_balance(from, to, id, amount)?;
-          }
-        }
-        self.transfer_balance(from, to, id, amount)?;
-        
-
-        Ok(())
     }
     /// Batched version of safe_transfer_from.
     pub fn safe_batch_transfer_from(
@@ -239,7 +240,6 @@ impl ERC1155 {
         contract_key_name: &str,
         entry_points: EntryPoints,
     ) -> Result<ERC1155, Error> {
-
         let balances_uref = storage::new_dictionary(BALANCES_KEY_NAME).unwrap_or_revert();
         let operators_uref = storage::new_dictionary(OPERATORS_KEY_NAME).unwrap_or_revert();
         let total_supply_uref = storage::new_dictionary(TOTAL_SUPPLY_KEY_NAME).unwrap_or_revert();

@@ -120,9 +120,13 @@ impl TestFixture {
     }
 
     pub fn balance_of(&self, account: Key, id: &str) -> Option<U256> {
-        let preimage = account.to_bytes().unwrap();
-        let balance_key = format!("balances_{}_{}", id, base64::encode(&preimage));
+        let mut preimage = Vec::new();
         
+        preimage.append(&mut id.to_bytes().unwrap());
+        preimage.append(&mut account.to_bytes().unwrap());
+        let key_bytes = blake2b256(&preimage);
+        let balance_key = base64::encode(key_bytes);
+
         let key = Key::Hash(self.contract_hash().value());
         let balance = self
             .context
@@ -140,8 +144,11 @@ impl TestFixture {
         let mut balances = Vec::new();
         let key = Key::Hash(self.contract_hash().value());
         for (i, _) in accounts.iter().enumerate() {
-            let item_key = base64::encode(&accounts[i].to_bytes().unwrap());
-            let balance_key = format!("balances_{}_{}", ids[i], item_key);
+            let mut preimage = Vec::new();
+            preimage.append(&mut ids[i].to_bytes().unwrap());
+            preimage.append(&mut accounts[i].to_bytes().unwrap());
+            let key_bytes = blake2b256(&preimage);
+            let balance_key = base64::encode(key_bytes);
             let balance = self
                 .context
                 .query_dictionary_item(

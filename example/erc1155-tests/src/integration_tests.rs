@@ -48,20 +48,35 @@ mod tests {
     #[test]
     fn should_read_balance() {
         let mut fixture = TestFixture::install_contract();
-
-        let token_id = "1";
-        let mint_amount_joe = U256::from(70);
-
+        let id = "1";
+        let total_supply = U256::from(100);
         fixture.mint(
-            Key::from(fixture.joe),
-            token_id,
-            mint_amount_joe,
+            Key::from(fixture.ali),
+            id,
+            total_supply,
             Sender(fixture.ali),
         );
-        let to_balance_after = fixture
-            .balance_of(Key::from(fixture.joe), token_id)
-            .unwrap_or_default();
-        assert_eq!(to_balance_after, mint_amount_joe);
+        assert_eq!(fixture.balance_of(Key::from(fixture.bob), id), None);
+        assert_eq!(
+            fixture.balance_of(Key::from(fixture.ali), id),
+            Some(total_supply)
+        );
+        // let transfer_amount = U256::from(35);
+        // fixture.safe_transfer_from(
+        //     Key::from(fixture.ali),
+        //     Key::from(fixture.bob),
+        //     id,
+        //     transfer_amount,
+        //     Sender(fixture.ali),
+        // );
+        // assert_eq!(
+        //     fixture.balance_of(Key::from(fixture.bob), id),
+        //     Some(transfer_amount)
+        // );
+        // assert_eq!(
+        //     fixture.balance_of(Key::from(fixture.ali), id),
+        //     Some(total_supply - transfer_amount)
+        // );
     }
     #[test]
     fn should_read_balance_batch() {
@@ -134,18 +149,10 @@ mod tests {
     }
 
     #[test]
-    fn should_safe_transfer_from() {
+    fn should_mint_and_read_total_supply() {
         let mut fixture = TestFixture::install_contract();
         let token_id = "1";
-        //     assert_eq!(fixture.balance_of(Key::from(fixture.bob), String::from("1")), None);
-        //     let initial_ali_balance = fixture.balance_of(Key::from(fixture.ali), String::from("1")).unwrap();
-        //     let transfer_amount_1 = U256::from(42);
         let mint_amount_joe = U256::from(100);
-        let to_balance_before = fixture
-            .balance_of(Key::from(fixture.joe), token_id)
-            .unwrap_or_default();
-        assert_eq!(to_balance_before, U256::zero());
-
         fixture.mint(
             Key::from(fixture.joe),
             token_id,
@@ -157,53 +164,38 @@ mod tests {
             .unwrap_or_default();
         assert_eq!(to_balance_after, mint_amount_joe);
 
-
+        let total_supply_after = fixture.total_supply(token_id).unwrap();
+        assert_eq!(total_supply_after, mint_amount_joe);
     }
-    //     
-    //     assert_eq!(
-    //         fixture.balance_of(Key::from(fixture.bob), String::from("1")),
-    //         Some(transfer_amount_1)
-    //     );
-    //     assert_eq!(
-    //         fixture.balance_of(Key::from(fixture.ali), String::from("1")),
-    //         Some(initial_ali_balance - transfer_amount_1)
-    //     );
 
-    //     let transfer_amount_2 = U256::from(20);
-    //     fixture.safe_transfer_from(
-    //         Key::from(fixture.ali),
-    //         String::from("1"),
-    //         transfer_amount_2,
-    //         Sender(fixture.bob),
-    //     );
-    //     assert_eq!(
-    //         fixture.balance_of(Key::from(fixture.ali), String::from("1")),
-    //         Some(initial_ali_balance - transfer_amount_1 + transfer_amount_2)
-    //     );
-    //     assert_eq!(
-    //         fixture.balance_of(Key::from(fixture.bob), String::from("1")),
-    //         Some(transfer_amount_1 - transfer_amount_2)
-    //     );
-    // }
-
-    // #[test]
-    // fn should_transfer_full_amount() {
-    //     let mut fixture = TestFixture::install_contract();
-
-    //     let initial_ali_balance = fixture.balance_of(Key::from(fixture.ali), String::from("1")).unwrap();
-    //     assert_eq!(fixture.balance_of(Key::from(fixture.bob), String::from("1")), None);
-
-    //     fixture.safe_transfer_from(
-    //         Key::from(fixture.bob),
-    //         String::from("1"),
-    //         initial_ali_balance,
-    //         Sender(fixture.ali),
-    //     );
-
-    //     assert_eq!(
-    //         fixture.balance_of(Key::from(fixture.bob), String::from("1")),
-    //         Some(initial_ali_balance)
-    //     );
+    #[test]
+    fn should_transfer_full_amount() {
+        let mut fixture = TestFixture::install_contract();
+        let mint_amount = U256::from(10000);
+        let id = "1";
+        fixture.mint(Key::from(fixture.ali), id, mint_amount, Sender(fixture.ali));
+        //let initial_ali_balance = fixture.balance_of(Key::from(fixture.ali), "1").unwrap();
+        assert_eq!(
+            fixture.balance_of(Key::from(fixture.ali), "1"),
+            Some(mint_amount)
+        );
+        let transfer_amount = U256::from(35);
+        fixture.safe_transfer_from(
+            Key::from(fixture.ali),
+            Key::from(fixture.joe),
+            id,
+            transfer_amount,
+            Sender(fixture.ali),
+        );
+        assert_eq!(
+            fixture.balance_of(Key::from(fixture.joe), id),
+            Some(transfer_amount)
+        );
+        assert_eq!(
+            fixture.balance_of(Key::from(fixture.ali), id),
+            Some(mint_amount - transfer_amount)
+        );
+    }
     //     assert_eq!(
     //         fixture.balance_of(Key::from(fixture.ali), String::from("1")),
     //         Some(U256::zero())
