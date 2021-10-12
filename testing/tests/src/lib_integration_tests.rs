@@ -1,177 +1,177 @@
-use once_cell::sync::Lazy;
+// use once_cell::sync::Lazy;
 
-use casper_engine_test_support::{
-    internal::{ExecuteRequestBuilder, InMemoryWasmTestBuilder, DEFAULT_RUN_GENESIS_REQUEST},
-    DEFAULT_ACCOUNT_ADDR, MINIMUM_ACCOUNT_CREATION_BALANCE,
-};
-use casper_execution_engine::core::{
-    engine_state::{Error as CoreError, ExecuteRequest},
-    execution::Error as ExecError,
-};
-use casper_types::{
-    account::AccountHash, bytesrepr::FromBytes, runtime_args, system::mint, ApiError, CLTyped,
-    ContractHash, ContractPackageHash, Key, PublicKey, RuntimeArgs, SecretKey, U256,
-};
+// use casper_engine_test_support::{
+//     internal::{ExecuteRequestBuilder, InMemoryWasmTestBuilder, DEFAULT_RUN_GENESIS_REQUEST},
+//     DEFAULT_ACCOUNT_ADDR, MINIMUM_ACCOUNT_CREATION_BALANCE,
+// };
+// use casper_execution_engine::core::{
+//     engine_state::{Error as CoreError, ExecuteRequest},
+//     execution::Error as ExecError,
+// };
+// use casper_types::{
+//     account::AccountHash, bytesrepr::FromBytes, runtime_args, system::mint, ApiError, CLTyped,
+//     ContractHash, ContractPackageHash, Key, PublicKey, RuntimeArgs, SecretKey, U256,
+// };
 
-const EXAMPLE_ERC1155_TOKEN: &str = "erc1155_token.wasm";
-const CONTRACT_ERC1155_TEST: &str = "erc1155_test.wasm";
-const CONTRACT_ERC1155_TEST_CALL: &str = "erc1155_test_call.wasm";
-const ERC1155_TOKEN_CONTRACT_KEY: &str = "erc1155_token_contract";
-const BALANCES_KEY: &str = "balances";
-const OPERATORS_KEY: &str = "operators";
-const TEST_CONTRACT_KEY: &str = "test_contract";
+// const EXAMPLE_ERC1155_TOKEN: &str = "erc1155_token.wasm";
+// const CONTRACT_ERC1155_TEST: &str = "erc1155_test.wasm";
+// const CONTRACT_ERC1155_TEST_CALL: &str = "erc1155_test_call.wasm";
+// const ERC1155_TOKEN_CONTRACT_KEY: &str = "erc1155_token_contract";
+// const BALANCES_KEY: &str = "balances";
+// const OPERATORS_KEY: &str = "operators";
+// const TEST_CONTRACT_KEY: &str = "test_contract";
 
-const _ERROR_INVALID_CONTEXT: u16 = u16::MAX;
-const ERROR_INSUFFICIENT_BALANCE: u16 = u16::MAX - 1;
-const ERROR_INSUFFICIENT_ALLOWANCE: u16 = u16::MAX - 2;
-const ERROR_OVERFLOW: u16 = u16::MAX - 3;
+// const _ERROR_INVALID_CONTEXT: u16 = u16::MAX;
+// const ERROR_INSUFFICIENT_BALANCE: u16 = u16::MAX - 1;
+// const ERROR_INSUFFICIENT_ALLOWANCE: u16 = u16::MAX - 2;
+// const ERROR_OVERFLOW: u16 = u16::MAX - 3;
 
-const METHOD_SAFE_TRANSFER_FROM: &str = "safe_transfer_from";
-const ARG_RECIPIENT: &str = "to";
-const ARG_ACCOUNTS: &str = "accounts";
-const ARG_TOKEN_ID: &str = "id";
-const ARG_TOKEN_IDS: &str = "ids";
-const ARG_AMOUNT: &str = "amount";
-const ARG_APPROVED: &str = "approved";
+// const METHOD_SAFE_TRANSFER_FROM: &str = "safe_transfer_from";
+// const ARG_RECIPIENT: &str = "to";
+// const ARG_ACCOUNTS: &str = "accounts";
+// const ARG_TOKEN_ID: &str = "id";
+// const ARG_TOKEN_IDS: &str = "ids";
+// const ARG_AMOUNT: &str = "amount";
+// const ARG_APPROVED: &str = "approved";
 
-const METHOD_SET_APPROVAL_FOR_ALL: &str = "set_approval_for_all";
-const ARG_ACCOUNT: &str = "account";
-const ARG_OPERATOR: &str = "operator";
-const ARG_AMOUNTS: &str = "amounts";
-const CHECK_BALANCE_OF_ENTRYPOINT: &str = "check_balance_of";
-const CHECK_BALANCE_OF_BATCH_ENTRYPOINT: &str = "check_balance_of_batch";
-const CHECK_IS_APPROVAL_FOR_ALL_ENTRYPOINT: &str = "check_is_approval_for_all";
-const ARG_TOKEN_CONTRACT: &str = "token_contract";
-const ARG_ADDRESS: &str = "address";
-const RESULT_KEY: &str = "result";
-const ERC1155_TEST_CALL_KEY: &str = "erc1155_test_call";
+// const METHOD_SET_APPROVAL_FOR_ALL: &str = "set_approval_for_all";
+// const ARG_ACCOUNT: &str = "account";
+// const ARG_OPERATOR: &str = "operator";
+// const ARG_AMOUNTS: &str = "amounts";
+// const CHECK_BALANCE_OF_ENTRYPOINT: &str = "check_balance_of";
+// const CHECK_BALANCE_OF_BATCH_ENTRYPOINT: &str = "check_balance_of_batch";
+// const CHECK_IS_APPROVAL_FOR_ALL_ENTRYPOINT: &str = "check_is_approval_for_all";
+// const ARG_TOKEN_CONTRACT: &str = "token_contract";
+// const ARG_ADDRESS: &str = "address";
+// const RESULT_KEY: &str = "result";
+// const ERC1155_TEST_CALL_KEY: &str = "erc1155_test_call";
 
-static ACCOUNT_1_SECRET_KEY: Lazy<SecretKey> =
-    Lazy::new(|| SecretKey::secp256k1_from_bytes(&[221u8; 32]).unwrap());
-static ACCOUNT_1_PUBLIC_KEY: Lazy<PublicKey> =
-    Lazy::new(|| PublicKey::from(&*ACCOUNT_1_SECRET_KEY));
-static ACCOUNT_1_ADDR: Lazy<AccountHash> = Lazy::new(|| ACCOUNT_1_PUBLIC_KEY.to_account_hash());
+// static ACCOUNT_1_SECRET_KEY: Lazy<SecretKey> =
+//     Lazy::new(|| SecretKey::secp256k1_from_bytes(&[221u8; 32]).unwrap());
+// static ACCOUNT_1_PUBLIC_KEY: Lazy<PublicKey> =
+//     Lazy::new(|| PublicKey::from(&*ACCOUNT_1_SECRET_KEY));
+// static ACCOUNT_1_ADDR: Lazy<AccountHash> = Lazy::new(|| ACCOUNT_1_PUBLIC_KEY.to_account_hash());
 
-static ACCOUNT_2_SECRET_KEY: Lazy<SecretKey> =
-    Lazy::new(|| SecretKey::secp256k1_from_bytes(&[212u8; 32]).unwrap());
-static ACCOUNT_2_PUBLIC_KEY: Lazy<PublicKey> =
-    Lazy::new(|| PublicKey::from(&*ACCOUNT_2_SECRET_KEY));
-static ACCOUNT_2_ADDR: Lazy<AccountHash> = Lazy::new(|| ACCOUNT_2_PUBLIC_KEY.to_account_hash());
+// static ACCOUNT_2_SECRET_KEY: Lazy<SecretKey> =
+//     Lazy::new(|| SecretKey::secp256k1_from_bytes(&[212u8; 32]).unwrap());
+// static ACCOUNT_2_PUBLIC_KEY: Lazy<PublicKey> =
+//     Lazy::new(|| PublicKey::from(&*ACCOUNT_2_SECRET_KEY));
+// static ACCOUNT_2_ADDR: Lazy<AccountHash> = Lazy::new(|| ACCOUNT_2_PUBLIC_KEY.to_account_hash());
 
-const TRANSFER_AMOUNT_1: u64 = 11550_001;
-const TRANSFER_AMOUNT_2: u64 = 19_999;
-const ALLOWANCE_AMOUNT_1: u64 = 456_789;
-const ALLOWANCE_AMOUNT_2: u64 = 87_654;
+// const TRANSFER_AMOUNT_1: u64 = 11550_001;
+// const TRANSFER_AMOUNT_2: u64 = 19_999;
+// const ALLOWANCE_AMOUNT_1: u64 = 456_789;
+// const ALLOWANCE_AMOUNT_2: u64 = 87_654;
 
-const METHOD_SAFE_TRANSFER_FROM_STORED_CONTRACT: &str = "safe_transfer_from_stored_contract";
-const METHOD_SET_APPROVAL_FOR_ALL_STORED_CONTRACT: &str = "set_approval_for_all_stored_contract";
+// const METHOD_SAFE_TRANSFER_FROM_STORED_CONTRACT: &str = "safe_transfer_from_stored_contract";
+// const METHOD_SET_APPROVAL_FOR_ALL_STORED_CONTRACT: &str = "set_approval_for_all_stored_contract";
 
-const TOKEN_OWNER_ADDRESS_1: Key = Key::Account(AccountHash::new([42; 32]));
-const TOKEN_OWNER_AMOUNT_1: u64 = 1_000_000;
-const TOKEN_OWNER_ADDRESS_2: Key = Key::Hash([42; 32]);
-const TOKEN_OWNER_AMOUNT_2: u64 = 2_000_000;
+// const TOKEN_OWNER_ADDRESS_1: Key = Key::Account(AccountHash::new([42; 32]));
+// const TOKEN_OWNER_AMOUNT_1: u64 = 1_000_000;
+// const TOKEN_OWNER_ADDRESS_2: Key = Key::Hash([42; 32]);
+// const TOKEN_OWNER_AMOUNT_2: u64 = 2_000_000;
 
-// const METHOD_MINT: &str = "mint";
-// const METHOD_BURN: &str = "burn";
+// // const METHOD_MINT: &str = "mint";
+// // const METHOD_BURN: &str = "burn";
 
-/// Converts hash addr of Account into Hash, and Hash into Account
-///
-/// This is useful for making sure ERC1155 library respects different variants of Key when storing
-/// balances.
-fn invert_erc1155_address(address: Key) -> Key {
-    match address {
-        Key::Account(account_hash) => Key::Hash(account_hash.value()),
-        Key::Hash(contract_hash) => Key::Account(AccountHash::new(contract_hash)),
-        _ => panic!("Unsupported Key variant"),
-    }
-}
+// /// Converts hash addr of Account into Hash, and Hash into Account
+// ///
+// /// This is useful for making sure ERC1155 library respects different variants of Key when storing
+// /// balances.
+// fn invert_erc1155_address(address: Key) -> Key {
+//     match address {
+//         Key::Account(account_hash) => Key::Hash(account_hash.value()),
+//         Key::Hash(contract_hash) => Key::Account(AccountHash::new(contract_hash)),
+//         _ => panic!("Unsupported Key variant"),
+//     }
+// }
 
-#[derive(Copy, Clone)]
-struct TestContext {
-    erc1155_token: ContractHash,
-    test_contract: ContractHash,
-    erc1155_test_call: ContractPackageHash,
-}
+// #[derive(Copy, Clone)]
+// struct TestContext {
+//     erc1155_token: ContractHash,
+//     test_contract: ContractHash,
+//     erc1155_test_call: ContractPackageHash,
+// }
 
-fn setup() -> (InMemoryWasmTestBuilder, TestContext) {
-    let mut builder = InMemoryWasmTestBuilder::default();
-    builder.run_genesis(&*DEFAULT_RUN_GENESIS_REQUEST);
+// fn setup() -> (InMemoryWasmTestBuilder, TestContext) {
+//     let mut builder = InMemoryWasmTestBuilder::default();
+//     builder.run_genesis(&*DEFAULT_RUN_GENESIS_REQUEST);
 
-    let id: Option<u64> = None;
-    let transfer_1_args = runtime_args! {
-        mint::ARG_TARGET => *ACCOUNT_1_ADDR,
-        mint::ARG_ID => id,
-        mint::ARG_AMOUNT => MINIMUM_ACCOUNT_CREATION_BALANCE,
-    };
-    let transfer_2_args = runtime_args! {
-        mint::ARG_TARGET => *ACCOUNT_2_ADDR,
-        mint::ARG_ID => id,
-        mint::ARG_AMOUNT => MINIMUM_ACCOUNT_CREATION_BALANCE,
-    };
+//     let id: Option<u64> = None;
+//     let transfer_1_args = runtime_args! {
+//         mint::ARG_TARGET => *ACCOUNT_1_ADDR,
+//         mint::ARG_ID => id,
+//         mint::ARG_AMOUNT => MINIMUM_ACCOUNT_CREATION_BALANCE,
+//     };
+//     let transfer_2_args = runtime_args! {
+//         mint::ARG_TARGET => *ACCOUNT_2_ADDR,
+//         mint::ARG_ID => id,
+//         mint::ARG_AMOUNT => MINIMUM_ACCOUNT_CREATION_BALANCE,
+//     };
 
-    let transfer_request_1 =
-        ExecuteRequestBuilder::transfer(*DEFAULT_ACCOUNT_ADDR, transfer_1_args).build();
-    let transfer_request_2 =
-        ExecuteRequestBuilder::transfer(*DEFAULT_ACCOUNT_ADDR, transfer_2_args).build();
+//     let transfer_request_1 =
+//         ExecuteRequestBuilder::transfer(*DEFAULT_ACCOUNT_ADDR, transfer_1_args).build();
+//     let transfer_request_2 =
+//         ExecuteRequestBuilder::transfer(*DEFAULT_ACCOUNT_ADDR, transfer_2_args).build();
 
-    let install_request_1 = ExecuteRequestBuilder::standard(
-        *DEFAULT_ACCOUNT_ADDR,
-        EXAMPLE_ERC1155_TOKEN,
-        RuntimeArgs::default(),
-    )
-    .build();
-    let install_request_2 = ExecuteRequestBuilder::standard(
-        *DEFAULT_ACCOUNT_ADDR,
-        CONTRACT_ERC1155_TEST,
-        RuntimeArgs::default(),
-    )
-    .build();
-    let install_request_3 = ExecuteRequestBuilder::standard(
-        *DEFAULT_ACCOUNT_ADDR,
-        CONTRACT_ERC1155_TEST_CALL,
-        RuntimeArgs::default(),
-    )
-    .build();
+//     let install_request_1 = ExecuteRequestBuilder::standard(
+//         *DEFAULT_ACCOUNT_ADDR,
+//         EXAMPLE_ERC1155_TOKEN,
+//         RuntimeArgs::default(),
+//     )
+//     .build();
+//     let install_request_2 = ExecuteRequestBuilder::standard(
+//         *DEFAULT_ACCOUNT_ADDR,
+//         CONTRACT_ERC1155_TEST,
+//         RuntimeArgs::default(),
+//     )
+//     .build();
+//     let install_request_3 = ExecuteRequestBuilder::standard(
+//         *DEFAULT_ACCOUNT_ADDR,
+//         CONTRACT_ERC1155_TEST_CALL,
+//         RuntimeArgs::default(),
+//     )
+//     .build();
 
-    builder.exec(transfer_request_1).expect_success().commit();
-    builder.exec(transfer_request_2).expect_success().commit();
-    builder.exec(install_request_1).expect_success().commit();
-    builder.exec(install_request_2).expect_success().commit();
-    builder.exec(install_request_3).expect_success().commit();
+//     builder.exec(transfer_request_1).expect_success().commit();
+//     builder.exec(transfer_request_2).expect_success().commit();
+//     builder.exec(install_request_1).expect_success().commit();
+//     builder.exec(install_request_2).expect_success().commit();
+//     builder.exec(install_request_3).expect_success().commit();
 
-    let account = builder
-        .get_account(*DEFAULT_ACCOUNT_ADDR)
-        .expect("should have account");
+//     let account = builder
+//         .get_account(*DEFAULT_ACCOUNT_ADDR)
+//         .expect("should have account");
 
-    let erc1155_token = account
-        .named_keys()
-        .get(ERC1155_TOKEN_CONTRACT_KEY)
-        .and_then(|key| key.into_hash())
-        .map(ContractHash::new)
-        .expect("should have contract hash");
+//     let erc1155_token = account
+//         .named_keys()
+//         .get(ERC1155_TOKEN_CONTRACT_KEY)
+//         .and_then(|key| key.into_hash())
+//         .map(ContractHash::new)
+//         .expect("should have contract hash");
 
-    let test_contract = account
-        .named_keys()
-        .get(TEST_CONTRACT_KEY)
-        .and_then(|key| key.into_hash())
-        .map(ContractHash::new)
-        .expect("should have contract hash");
+//     let test_contract = account
+//         .named_keys()
+//         .get(TEST_CONTRACT_KEY)
+//         .and_then(|key| key.into_hash())
+//         .map(ContractHash::new)
+//         .expect("should have contract hash");
 
-    let erc1155_test_call = account
-        .named_keys()
-        .get(ERC1155_TEST_CALL_KEY)
-        .and_then(|key| key.into_hash())
-        .map(ContractPackageHash::new)
-        .expect("should have contract hash");
+//     let erc1155_test_call = account
+//         .named_keys()
+//         .get(ERC1155_TEST_CALL_KEY)
+//         .and_then(|key| key.into_hash())
+//         .map(ContractPackageHash::new)
+//         .expect("should have contract hash");
 
-    let test_context = TestContext {
-        erc1155_token,
-        test_contract,
-        erc1155_test_call,
-    };
+//     let test_context = TestContext {
+//         erc1155_token,
+//         test_contract,
+//         erc1155_test_call,
+//     };
 
-    (builder, test_context)
-}
+//     (builder, test_context)
+// }
 
 // fn erc1155_check_total_supply(
 //     builder: &mut InMemoryWasmTestBuilder,

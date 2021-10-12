@@ -62,16 +62,3 @@ pub(crate) fn get_immediate_caller_address() -> Result<Address, Error> {
         .ok_or(Error::InvalidContext)
 }
 
-/// Gets the caller address which is stored on the top of the call stack.
-///
-/// This is similar to what [`runtime::get_caller`] does but it also supports stored contracts.
-pub(crate) fn get_caller_address() -> Result<Address, Error> {
-    let call_stack = runtime::get_call_stack();
-    let top_of_the_stack = call_stack
-        .into_iter()
-        .rev()
-        .next()
-        .ok_or(Error::InvalidContext)?;
-    let address = call_stack_element_to_address(top_of_the_stack);
-    Ok(address)
-}

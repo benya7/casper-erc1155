@@ -6,8 +6,7 @@ compile_error!("target arch should be wasm32: compile with '--target wasm32-unkn
 
 extern crate alloc;
 
-use alloc::string::String;
-use alloc::vec::Vec;
+use alloc::{string::String, vec::Vec};
 use casper_contract::{contract_api::runtime, unwrap_or_revert::UnwrapOrRevert};
 use casper_erc1155::{
     constants::{
@@ -18,7 +17,7 @@ use casper_erc1155::{
     },
     Address, ERC1155,
 };
-use casper_types::{account::AccountHash, CLValue, U256};
+use casper_types::{CLValue, U256};
 
 #[no_mangle]
 pub extern "C" fn uri() {
@@ -79,11 +78,12 @@ pub extern "C" fn safe_transfer_from() {
 
 #[no_mangle]
 pub extern "C" fn safe_batch_transfer_from() {
+    let from: Address = runtime::get_named_arg(FROM_RUNTIME_ARG_NAME);
     let to: Address = runtime::get_named_arg(RECIPIENT_RUNTIME_ARG_NAME);
     let ids: Vec<String> = runtime::get_named_arg(TOKEN_IDS_RUNTIME_ARG_NAME);
     let amounts: Vec<U256> = runtime::get_named_arg(AMOUNTS_RUNTIME_ARG_NAME);
     ERC1155::default()
-        .safe_batch_transfer_from(to, ids, amounts)
+        .safe_batch_transfer_from(from, to, ids, amounts)
         .unwrap_or_revert();
 }
 

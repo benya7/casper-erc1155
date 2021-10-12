@@ -96,16 +96,6 @@ impl ERC1155 {
         operators::write_operator_to(self.operators_uref(), owner, spender, approved)
     }
 
-    fn transfer_balance(
-        &mut self,
-        from: Address,
-        to: Address,
-        id: &str,
-        amount: U256,
-    ) -> Result<(), Error> {
-        balances::transfer_balance(self.balances_uref(), from, to, id, amount)
-    }
-
     /// Installs the ERC1155 contract with the default set of entry points.
     ///
     /// This should be called from within `fn call()` of your contract.
@@ -113,18 +103,22 @@ impl ERC1155 {
         let default_entry_points = entry_points::default();
         ERC1155::install_custom(uri, ERC1155_TOKEN_CONTRACT_KEY_NAME, default_entry_points)
     }
+
     /// Returns the URI of the token.
     pub fn uri(&self) -> String {
         detail::read_from(URI_KEY_NAME)
     }
+
     /// Returns the total supply of the token.
     pub fn total_supply(&self, id: &str) -> U256 {
         self.read_total_supply(&id)
     }
+
     /// Returns the balance of `account`.
     pub fn balance_of(&self, account: Address, id: &str) -> U256 {
         self.read_balance(account, id)
     }
+
     /// Returns the balances of `accounts`.
     pub fn balance_of_batch(&self, accounts: Vec<Address>, ids: Vec<String>) -> Vec<U256> {
         assert_eq!(ids.len(), accounts.len());
@@ -136,16 +130,19 @@ impl ERC1155 {
         }
         balances
     }
+
     /// Grants or revokes permission to operator to transfer the caller’s tokens, according to approved.
     pub fn set_approval_for_all(&mut self, operator: Address, approved: bool) -> Result<(), Error> {
         let owner = detail::get_immediate_caller_address()?;
         self.write_operator(owner, operator, approved);
         Ok(())
     }
+
     /// Returns true if operator is approved to transfer account's tokens.
     pub fn is_approval_for_all(&self, account: Address, operator: Address) -> bool {
         self.read_operator(account, operator)
     }
+
     /// Transfers `amount` of tokens from the direct caller to `recipient`.
     pub fn safe_transfer_from(
         &mut self,
@@ -156,12 +153,14 @@ impl ERC1155 {
     ) -> Result<(), Error> {
         let spender = detail::get_immediate_caller_address()?;
         let operator = self.read_operator(from, spender);
-        if (from != spender && !operator) || amount == U256::zero() {
+        if (from != spender && !operator) || amount == U256::zero() || from == to {
             return Ok(());
         } else {
             let sender_balance = {
                 let balance = self.read_balance(from, &id);
-                balance.checked_sub(amount).ok_or(Error::Overflow)?
+                balance
+                    .checked_sub(amount)
+                    .ok_or(Error::InsufficientBalance)?
             };
             let recipient_balance = {
                 let balance = self.read_balance(to, &id);
@@ -172,24 +171,38 @@ impl ERC1155 {
             Ok(())
         }
     }
+
     /// Batched version of safe_transfer_from.
     pub fn safe_batch_transfer_from(
         &mut self,
+        from: Address,
         to: Address,
         ids: Vec<String>,
         amounts: Vec<U256>,
     ) -> Result<(), Error> {
-        assert_eq!(ids.len(), amounts.len());
-        let from = detail::get_immediate_caller_address()?;
-
-        for (i, _) in ids.iter().enumerate() {
-            let balance = self.read_balance(from, &ids[i]);
-            let id = &ids[i].clone();
-            assert_eq!(balance > amounts[i], true);
-            self.transfer_balance(from, to, id, amounts[i])?;
+        let spender = detail::get_immediate_caller_address()?;
+        let operator = self.read_operator(from, spender);
+        if (from != spender && !operator) || from == to {
+            return Ok(());
+        } else {
+            for (i, _) in ids.iter().enumerate() {
+                let sender_balance = {
+                    let balance = self.read_balance(from, &ids[i]);
+                    balance
+                        .checked_sub(amounts[i])
+                        .ok_or(Error::InsufficientBalance)?
+                };
+                let recipient_balance = {
+                    let balance = self.read_balance(to, &ids[i]);
+                    balance.checked_add(amounts[i]).ok_or(Error::Overflow)?
+                };
+                self.write_balance(from, &ids[i], sender_balance);
+                self.write_balance(to, &ids[i], recipient_balance);
+            }
+            Ok(())
         }
-        Ok(())
     }
+
     /// Mints `amount` new tokens and adds them to `owner`'s balance and to the token total supply.
     /// # Security
     /// This offers no security whatsoever, hence it is advised to NOT expose this method through a
@@ -207,6 +220,7 @@ impl ERC1155 {
         self.write_total_supply(&id, new_total_supply);
         Ok(())
     }
+
     /// Burns (i.e. subtracts) `amount` of tokens from `owner`'s balance and from the token total supply.
     /// # Security
     /// This offers no security whatsoever, hence it is advised to NOT expose this method through a

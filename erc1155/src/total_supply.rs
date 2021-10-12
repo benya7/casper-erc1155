@@ -7,10 +7,13 @@ use alloc::{format, string::String};
 use crate::{constants::TOTAL_SUPPLY_KEY_NAME, detail};
 
 
+/// Creates a total supply item key for a dictionary item.
 #[inline]
 pub(crate) fn total_supply_key(token_id: &str) -> String {
     format!("total_supply_{}", token_id)
 }
+
+/// Get Operators uref of contract context.
 pub(crate) fn total_supply_uref() -> URef {
     detail::get_uref(TOTAL_SUPPLY_KEY_NAME)
 }

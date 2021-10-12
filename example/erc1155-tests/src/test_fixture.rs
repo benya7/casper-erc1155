@@ -7,8 +7,7 @@ use casper_erc1155::constants as consts;
 use casper_types::{
     account::AccountHash,
     bytesrepr::{FromBytes, ToBytes},
-    runtime_args, AsymmetricType, CLType, CLTyped, ContractHash, Key, PublicKey, RuntimeArgs, U256,
-    U512,
+    runtime_args, AsymmetricType, CLTyped, ContractHash, Key, PublicKey, RuntimeArgs, U256, U512,
 };
 
 const CONTRACT_ERC1155_TOKEN: &str = "erc1155_token.wasm";
@@ -121,7 +120,7 @@ impl TestFixture {
 
     pub fn balance_of(&self, account: Key, id: &str) -> Option<U256> {
         let mut preimage = Vec::new();
-        
+
         preimage.append(&mut id.to_bytes().unwrap());
         preimage.append(&mut account.to_bytes().unwrap());
         let key_bytes = blake2b256(&preimage);
@@ -137,7 +136,7 @@ impl TestFixture {
             )
             .ok()?;
 
-        Some(balance.into_t::<U256>().unwrap())
+        Some(balance.into_t::<U256>().unwrap_or_default())
     }
 
     pub fn balance_of_batch(&self, accounts: Vec<Key>, ids: Vec<String>) -> Option<Vec<U256>> {
@@ -215,6 +214,7 @@ impl TestFixture {
 
     pub fn safe_batch_transfer_from(
         &mut self,
+        from: Key,
         to: Key,
         ids: Vec<String>,
         amounts: Vec<U256>,
@@ -224,6 +224,7 @@ impl TestFixture {
             sender,
             consts::SAFE_BATCH_TRANSFER_FROM_ENTRY_POINT_NAME,
             runtime_args! {
+                consts::FROM_RUNTIME_ARG_NAME => from,
                 consts::RECIPIENT_RUNTIME_ARG_NAME => to,
                 consts::TOKEN_IDS_RUNTIME_ARG_NAME => ids,
                 consts::AMOUNTS_RUNTIME_ARG_NAME => amounts
@@ -243,10 +244,10 @@ impl TestFixture {
         );
     }
 
-    pub fn burn(&mut self, owner: Key, id: String, amount: U256, sender: Sender) {
+    pub fn burn(&mut self, owner: Key, id: &str, amount: U256, sender: Sender) {
         self.call(
             sender,
-            consts::SAFE_TRANSFER_FROM_ENTRY_POINT_NAME,
+            consts::BURN_ENTRY_POINT_NAME,
             runtime_args! {
               consts::OWNER_RUNTIME_ARG_NAME => owner,
                 consts::TOKEN_ID_RUNTIME_ARG_NAME => id,

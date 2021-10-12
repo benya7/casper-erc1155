@@ -111,7 +111,8 @@ pub fn safe_batch_transfer_from() -> EntryPoint {
     EntryPoint::new(
         String::from(SAFE_BATCH_TRANSFER_FROM_ENTRY_POINT_NAME),
         vec![
-            Parameter::new(RECIPIENT_RUNTIME_ARG_NAME, String::cl_type()),
+            Parameter::new(FROM_RUNTIME_ARG_NAME, Address::cl_type()),
+            Parameter::new(RECIPIENT_RUNTIME_ARG_NAME, Address::cl_type()),
             Parameter::new(TOKEN_IDS_RUNTIME_ARG_NAME, Vec::<String>::cl_type()),
             Parameter::new(AMOUNTS_RUNTIME_ARG_NAME, Vec::<U256>::cl_type()),
         ],
