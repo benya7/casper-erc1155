@@ -224,9 +224,9 @@ pub extern "C" fn burn() {
 In the folder
 **/example/erc1155-tests/src**
 will find two files the
-**integration_tests.rs** and **test_fixture.rs**
+[**integration_tests.rs**](https://github.com/en0c-026/casper-erc1155/blob/master/example/erc1155-tests/src/integration_tests.rs) and [**test_fixture.rs**](https://github.com/en0c-026/casper-erc1155/blob/master/example/erc1155-tests/src/test_fixture.rs)
 
-The **test_fixture.rs** file takes care of creating the context to run the unit tests.
+The [**test_fixture.rs**](https://github.com/en0c-026/casper-erc1155/blob/master/example/erc1155-tests/src/test_fixture.rs) file takes care of creating the context to run the unit tests.
 
 Here we import the Casper packages,**casper_engine_test_support**, is in charge of providing the tools to create the context. Also, we declare some constants for the test contract and the helper function **blake2b256** that will help us encode data in our contract.
 
@@ -261,9 +261,7 @@ In the following code implemented the struct **Sender** and **TestFixture**.
 And we also declare three users **ali, bob, joe** all of type **AccountHash**.
 
 Then we have the **install_contract** functions, which is responsible for initializing the environment variables and running the context. The others
-**contract_hash,
-query_contract,
-call**, are auxiliary functions to interact with the test contract.
+**contract_hash, query_contract, call**, are auxiliary functions to interact with the test contract.
 
 ```rust
 #[derive(Clone, Copy)]
@@ -348,7 +346,7 @@ impl TestFixture {
 
 El resto de las funciones son la implementacion ERC-1155: **uri, total_supply, balance_of, balance_of_batch, set_approval_for_all, is_approval_for_all, safe_transfer_from, safe_batch_transfer_from, mint, burn**
 
-Puede ver el codigo completo en el archivo /example/erc1155-tests/src/test_fixture.rs.
+Puede ver el codigo completo en el archivo [/example/erc1155-tests/src/test_fixture.rs](https://github.com/en0c-026/casper-erc1155/blob/master/example/erc1155-tests/src/test_fixture.rs).
 
 # Writing the tests #{writing-tests}
 
@@ -389,4 +387,4 @@ Now we only have to write the tests, first start the fixture by calling **TestFi
     }
 ```
 
-You can check the complete code in the file /example/erc1155-tests/src/integration_tests.rs
+You can check the complete code in the file [/example/erc1155-tests/src/integration_tests.rs](https://github.com/en0c-026/casper-erc1155/blob/master/example/erc1155-tests/src/integration_tests.rs).
