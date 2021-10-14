@@ -346,16 +346,7 @@ impl TestFixture {
     }
 ```
 
-El resto de las funciones son la implementacion ERC-1155: **uri, 
-total_supply, 
-balance_of, 
-balance_of_batch, 
-set_approval_for_all, 
-is_approval_for_all, 
-safe_transfer_from, 
-safe_batch_transfer_from, 
-mint, 
-burn, **
+El resto de las funciones son la implementacion ERC-1155: **uri, total_supply, balance_of, balance_of_batch, set_approval_for_all, is_approval_for_all, safe_transfer_from, safe_batch_transfer_from, mint, burn**
 
 Puede ver el codigo completo en el archivo /example/erc1155-tests/src/test_fixture.rs.
 
