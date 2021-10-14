@@ -22,7 +22,8 @@ You can read more about the original specification in [Ethereum (ERC-1155)](http
   - [The **safe_transfer_from**, **safe_batch_transfer_from**, **set_approval_for_all** functions](#the-safe_transfer_from-safe_batch_transfer_from-set_approval_for_all-functions)
   - [The **mint** and **burn** functions.](#the-mint-and-burn-functions)
   - [Testing the Contract {#testing-id}](#testing-the-contract-testing-id)
-  - [Writing documentation..](#writing-documentation)
+  - [Creating the context for testing {#create-context}](#creating-the-context-for-testing-create-context)
+- [Writing the tests #{writing-tests}](#writing-the-tests-writing-tests)
 
 
 
@@ -164,6 +165,7 @@ pub extern "C" fn safe_transfer_from() {
 }
 
 ```
+
 The **safe_batch_transfer_from** method is the batch version of **safe_transfer_from**.
 ```rust
 #[no_mangle]
@@ -177,8 +179,8 @@ pub extern "C" fn safe_batch_transfer_from() {
         .unwrap_or_revert();
 }
 ```
-The **set_approval_for_all method** allows you to set whether the operator is approved for the owner.
 
+The **set_approval_for_all method** allows you to set whether the operator is approved for the owner.
 ```rust
 
 #[no_mangle]
@@ -190,6 +192,7 @@ pub extern "C" fn set_approval_for_all() {
         .unwrap_or_revert();
 }
 ```
+
 ## The **mint** and **burn** functions.
 
 These functions **mint** and **burn** are experimental, they should not be implemented in mainnet until a permission system is implemented.
@@ -218,6 +221,181 @@ pub extern "C" fn burn() {
 
 ## Testing the Contract {#testing-id}
 
+In the folder
+**/example/erc1155-tests/src**
+will find two files the
+**integration_tests.rs** and **test_fixture.rs**
 
-STOP!
-## Writing documentation..
+The **test_fixture.rs** file takes care of creating the context to run the unit tests.
+
+Here we import the Casper packages,**casper_engine_test_support**, is in charge of providing the tools to create the context. Also, we declare some constants for the test contract and the helper function **blake2b256** that will help us encode data in our contract.
+
+```rust
+use blake2::{
+    digest::{Update, VariableOutput},
+    VarBlake2b,
+};
+use casper_engine_test_support::{Code, SessionBuilder, TestContext, TestContextBuilder};
+use casper_erc1155::constants as consts;
+use casper_types::{
+    account::AccountHash,
+    bytesrepr::{FromBytes, ToBytes},
+    runtime_args, AsymmetricType, CLTyped, ContractHash, Key, PublicKey, RuntimeArgs, U256, U512,
+};
+
+const CONTRACT_ERC1155_TOKEN: &str = "erc1155_token.wasm";
+const CONTRACT_KEY_NAME: &str = "erc1155_token_contract";
+
+fn blake2b256(item_key_string: &[u8]) -> Box<[u8]> {
+    let mut hasher = VarBlake2b::new(32).unwrap();
+    hasher.update(item_key_string);
+    hasher.finalize_boxed()
+}
+
+```
+
+## Creating the context for testing {#create-context}
+
+In the following code implemented the struct **Sender** and **TestFixture**.
+**TestFixture** declares a context, of type **TestContext** that acts as an execution engine for tests.
+And we also declare three users **ali, bob, joe** all of type **AccountHash**.
+
+Then we have the **install_contract** functions, which is responsible for initializing the environment variables and running the context. The others
+**contract_hash,
+query_contract,
+call**, are auxiliary functions to interact with the test contract.
+
+```rust
+#[derive(Clone, Copy)]
+pub struct Sender(pub AccountHash);
+
+pub struct TestFixture {
+    context: TestContext,
+    pub ali: AccountHash,
+    pub bob: AccountHash,
+    pub joe: AccountHash,
+}
+impl TestFixture {
+    pub const URI: &'static str = "https://myuri-example.com";
+
+    pub fn install_contract() -> TestFixture {
+        let ali = PublicKey::ed25519_from_bytes([3u8; 32]).unwrap();
+        let bob = PublicKey::ed25519_from_bytes([6u8; 32]).unwrap();
+        let joe = PublicKey::ed25519_from_bytes([9u8; 32]).unwrap();
+
+        let mut context = TestContextBuilder::new()
+            .with_public_key(ali.clone(), U512::from(500_000_000_000_000_000u64))
+            .with_public_key(bob.clone(), U512::from(500_000_000_000_000_000u64))
+            .build();
+
+        let session_code = Code::from(CONTRACT_ERC1155_TOKEN);
+        let session_args = runtime_args! {
+          consts::URI_RUNTIME_ARG_NAME => TestFixture::URI,
+        };
+
+        let session = SessionBuilder::new(session_code, session_args)
+            .with_address(ali.to_account_hash())
+            .with_authorization_keys(&[ali.to_account_hash()])
+            .build();
+
+        context.run(session);
+        TestFixture {
+            context,
+            ali: ali.to_account_hash(),
+            bob: bob.to_account_hash(),
+            joe: joe.to_account_hash(),
+        }
+    }
+
+    fn contract_hash(&self) -> ContractHash {
+        self.context
+            .get_account(self.ali)
+            .unwrap()
+            .named_keys()
+            .get(CONTRACT_KEY_NAME)
+            .unwrap()
+            .normalize()
+            .into_hash()
+            .unwrap()
+            .into()
+    }
+
+    fn query_contract<T: CLTyped + FromBytes>(&self, name: &str) -> Option<T> {
+        match self
+            .context
+            .query(self.ali, &[CONTRACT_KEY_NAME.to_string(), name.to_string()])
+        {
+            Err(_) => None,
+            Ok(maybe_value) => {
+                let value = maybe_value
+                    .into_t()
+                    .unwrap_or_else(|_| panic!("{} is not expected type.", name));
+                Some(value)
+            }
+        }
+    }
+
+    fn call(&mut self, sender: Sender, method: &str, args: RuntimeArgs) {
+        let Sender(address) = sender;
+        let code = Code::Hash(self.contract_hash().value(), method.to_string());
+        let session = SessionBuilder::new(code, args)
+            .with_address(address)
+            .with_authorization_keys(&[address])
+            .build();
+        self.context.run(session);
+    }
+```
+
+El resto de las funciones son la implementacion ERC-1155: **uri, 
+total_supply, 
+balance_of, 
+balance_of_batch, 
+set_approval_for_all, 
+is_approval_for_all, 
+safe_transfer_from, 
+safe_batch_transfer_from, 
+mint, 
+burn, **
+
+Puede ver el codigo completo en el archivo /example/erc1155-tests/src/test_fixture.rs.
+
+# Writing the tests #{writing-tests}
+
+In the **integration_test.rs** file we create a **Test** module to write our tests, we also import our **Sender** and **TestFixture** from our file.
+Now we only have to write the tests, first start the fixture by calling **TestFixture::install_contract()** and then just be able to call the rest of the functions and make assertions. Here is an example of the test to read the total supply of a token.
+
+```rust
+#[test]
+    fn should_read_total_supply() {
+        let mut fixture = TestFixture::install_contract();
+
+        let id_1 = "1";
+        let mint_amount_1 = U256::from(42);
+
+        let id_2 = "2";
+        let mint_amount_2 = U256::from(72);
+
+        assert_eq!(fixture.total_supply(id_1), None);
+        assert_eq!(fixture.total_supply(id_2), None);
+
+        fixture.mint(
+            Key::from(fixture.bob),
+            id_1,
+            mint_amount_1,
+            Sender(fixture.ali),
+        );
+
+        assert_eq!(fixture.total_supply(id_1), Some(mint_amount_1));
+
+        fixture.mint(
+            Key::from(fixture.joe),
+            id_2,
+            mint_amount_2,
+            Sender(fixture.bob),
+        );
+
+        assert_eq!(fixture.total_supply(id_2), Some(mint_amount_2));
+    }
+```
+
+You can check the complete code in the file /example/erc1155-tests/src/integration_tests.rs

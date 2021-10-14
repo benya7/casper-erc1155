@@ -98,7 +98,7 @@ impl TestFixture {
         self.context.run(session);
     }
 
-    pub fn token_uri(&self) -> String {
+    pub fn uri(&self) -> String {
         self.query_contract(consts::URI_RUNTIME_ARG_NAME).unwrap()
     }
 
