@@ -8,7 +8,7 @@ The roadmap here [/docs/ROADMAP.md](https://github.com/en0c-026/casper-erc1155/b
 
 This is the deploy hash of the example contract in Tesnet Casper:
 
-[1595479224e3e66ece245fd21768c3c6e9eea06e3aee463e5939233c8befefc9](https://testnet.cspr.live/account/016406b2e0012197adc57cb4218ed176a56a954b688601767a447b270283d2986c)
+[b10dd74764659c139ef83fb98e48dcd7c7b0c9f13304354be9723c6c2c80ab63](https://testnet.cspr.live/deploy/b10dd74764659c139ef83fb98e48dcd7c7b0c9f13304354be9723c6c2c80ab63)
 
 
 
